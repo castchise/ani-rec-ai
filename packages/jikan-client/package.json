@@ -1,0 +1,25 @@
+{
+    "name": "@ani-rec-ai/jikan-client",
+    "version": "0.0.1",
+    "private": true,
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "scripts": {
+        "build": "tsc",
+        "typecheck": "tsc --noEmit",
+        "dev": "tsc --watch"
+    },
+    "dependencies": {
+        "@ani-rec-ai/types": "workspace:*"
+    },
+    "devDependencies": {
+        "@ani-rec-ai/config": "workspace:*",
+        "typescript": "^5.4.0"
+    }
+}

@@ -1,0 +1,9 @@
+{
+  "extends": "@ani-rec-ai/config/typescript/base",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true
+  },
+  "include": ["src/**/*"]
+}
