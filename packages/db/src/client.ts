@@ -11,6 +11,6 @@ export const migrationClient = postgres(connectionString, { max: 1 });
 
 // For queries (connection pool)
 const queryClient = postgres(connectionString);
-export const db = drizzle(queryClient, { schema });
+export const db = drizzle({ client: queryClient, schema });
 
 export type DB = typeof db;
