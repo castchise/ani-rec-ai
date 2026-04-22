@@ -10,7 +10,7 @@ import {
   pgEnum,
   uuid,
   boolean,
-  vector,
+  // vector,
 } from "drizzle-orm/pg-core";
 
 export const watchStatusEnum = pgEnum("watch_status", [
@@ -37,8 +37,8 @@ export const anime = pgTable(
     status: text("status"),
     imageUrl: text("image_url"),
     // Embedding vectors — populated in Phase 2
-    embedding: vector("embedding", { dimensions: 1536 }),
-    cfVector: vector("cf_vector", { dimensions: 100 }),
+    // embedding: vector("embedding", { dimensions: 1536 }),
+    // cfVector: vector("cf_vector", { dimensions: 100 }),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
   (t) => ({
