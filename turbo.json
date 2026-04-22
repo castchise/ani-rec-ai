@@ -10,11 +10,17 @@
                 ".next/**",
                 "!.next/cache/**",
                 "dist/**"
+            ],
+            "env": [
+                "DATABASE_URL"
             ]
         },
         "dev": {
             "cache": false,
-            "persistent": true
+            "persistent": true,
+            "env": [
+                "DATABASE_URL"
+            ]
         },
         "typecheck": {
             "dependsOn": [
@@ -33,7 +39,13 @@
         },
         "db:studio": {
             "cache": false,
-            "persistent": true
+            "persistent": true,
+            "env": [
+                "DATABASE_URL"
+            ]
+        },
+        "db:push": {
+            "cache": false
         }
     }
 }

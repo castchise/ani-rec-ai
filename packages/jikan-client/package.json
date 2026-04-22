@@ -2,12 +2,13 @@
     "name": "@ani-rec-ai/jikan-client",
     "version": "0.0.1",
     "private": true,
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
+    "main": "./src/index.ts",
+    "types": "./src/index.ts",
     "exports": {
         ".": {
-            "import": "./dist/index.js",
-            "types": "./dist/index.d.ts"
+            "require": "./src/index.ts",
+            "import": "./src/index.ts",
+            "types": "./src/index.ts"
         }
     },
     "scripts": {
