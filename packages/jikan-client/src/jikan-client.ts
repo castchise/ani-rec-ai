@@ -1,8 +1,50 @@
 import type { Anime, UserAnimeEntry, WatchStatus } from "@ani-rec-ai/types";
 
 const JIKAN_BASE = "https://api.jikan.moe/v4";
-
 const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
+interface JikanListResponse {
+  data: Array<{
+    anime: { mal_id: number; title: string };
+    score: number | null;
+    watching_status: number;
+    updated_at: string;
+  }>;
+  pagination: {
+    has_next_page: boolean;
+    current_page: number;
+  };
+}
+
+interface JikanAnimeResponse {
+  data: {
+    mal_id: number;
+    title: string;
+    title_english: string | null;
+    synopsis: string | null;
+    episodes: number | null;
+    score: number | null;
+    popularity: number | null;
+    status: string;
+    aired: { from: string | null };
+    genres: Array<{ mal_id: number; name: string }>;
+    studios: Array<{ mal_id: number; name: string }>;
+    images: { jpg: { image_url: string } };
+  };
+}
+
+interface JikanFriendsResponse {
+  data: Array<{
+    user: { username: string };
+  }>;
+}
+
+type JikanStatus =
+  | "completed"
+  | "watching"
+  | "dropped"
+  | "onhold"
+  | "plantowatch";
 
 export class JikanClient {
   private lastRequestAt = 0;
@@ -33,10 +75,9 @@ export class JikanClient {
     return res.json() as Promise<T>;
   }
 
-  // Fetch a user's full animelist — paginates automatically.
   async getUserAnimeList(
     username: string,
-    status?: "completed" | "watching" | "dropped" | "onhold" | "plantowatch",
+    status?: JikanStatus,
   ): Promise<UserAnimeEntry[]> {
     const entries: UserAnimeEntry[] = [];
     let page = 1;
@@ -112,40 +153,4 @@ function mapWatchStatus(code: number): WatchStatus {
     default:
       return "completed";
   }
-}
-
-interface JikanListResponse {
-  data: Array<{
-    anime: { mal_id: number; title: string };
-    score: number | null;
-    watching_status: number;
-    updated_at: string;
-  }>;
-  pagination: {
-    has_next_page: boolean;
-    current_page: number;
-  };
-}
-
-interface JikanAnimeResponse {
-  data: {
-    mal_id: number;
-    title: string;
-    title_english: string | null;
-    synopsis: string | null;
-    episodes: number | null;
-    score: number | null;
-    popularity: number | null;
-    status: string;
-    aired: { from: string | null };
-    genres: Array<{ mal_id: number; name: string }>;
-    studios: Array<{ mal_id: number; name: string }>;
-    images: { jpg: { image_url: string } };
-  };
-}
-
-interface JikanFriendsResponse {
-  data: Array<{
-    user: { username: string };
-  }>;
 }
