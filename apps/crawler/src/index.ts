@@ -1,9 +1,13 @@
 import { Worker } from "bullmq";
-import { JikanClient } from "@ani-rec-ai/jikan-client";
+import { MalClient, JikanClient } from "@ani-rec-ai/jikan-client";
 import { db, crawledProfiles, users, userAnimeList, sql } from "@ani-rec-ai/db";
 import { connection, crawlQueue } from "./queue";
 
-const jikan = new JikanClient();
+const malClientId = process.env.MAL_CLIENT_ID;
+if (!malClientId) throw new Error("MAL_CLIENT_ID is not set");
+
+const mal = new MalClient(malClientId);
+const jikan = new JikanClient(); // still used for friend graph expansion
 
 const worker = new Worker(
   "profile-crawl",
@@ -12,8 +16,7 @@ const worker = new Worker(
     const malUsername = username.toLowerCase();
     console.log(`Crawling: ${malUsername}`);
 
-    // Skip profiles already crawled — use select instead of relational query
-    // so no relations() definition is required
+    // Skip profiles already crawled
     const existing = await db
       .select()
       .from(crawledProfiles)
@@ -25,13 +28,13 @@ const worker = new Worker(
       return;
     }
 
-    let list: Awaited<ReturnType<typeof jikan.getUserAnimeList>>;
+    let list: Awaited<ReturnType<typeof mal.getUserAnimeList>>;
     try {
-      list = await jikan.getUserAnimeList(malUsername, "completed");
+      list = await mal.getUserAnimeList(malUsername, "completed");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`  ${malUsername}: Jikan error — ${msg}`);
-      if (msg.includes("404") || msg.includes("403")) {
+      console.error(`  ${malUsername}: MAL API error — ${msg}`);
+      if (msg.startsWith("403") || msg.startsWith("404")) {
         await db.insert(crawledProfiles).values({
           malUsername,
           ratingCount: 0,
@@ -40,13 +43,12 @@ const worker = new Worker(
         console.log(`  ${malUsername}: marked as private/not found`);
         return;
       }
-      throw err; // re-throw so BullMQ retries (rate limits, 5xx, etc.)
+      throw err;
     }
 
     console.log(`  ${malUsername}: ${list.length} completed entries`);
 
     if (list.length > 0) {
-      // Upsert user row — returns the id whether inserted or already existed
       const [user] = await db
         .insert(users)
         .values({ malUsername })
@@ -57,8 +59,6 @@ const worker = new Worker(
         .returning({ id: users.id });
 
       const userId = user!.id;
-
-      // Only scored entries are useful for collaborative filtering
       const scored = list.filter((e) => (e.score ?? 0) > 0);
 
       if (scored.length > 0) {
@@ -97,18 +97,23 @@ const worker = new Worker(
       console.log(`  ${malUsername}: saved ${scored.length} scored entries`);
     }
 
-    // Expand graph via friends
-    const friends = await jikan.getUserFriends(malUsername);
-    console.log(`  ${malUsername}: queuing ${friends.length} friends`);
-    for (const friend of friends) {
-      await crawlQueue.add(
-        "profile-crawl",
-        { username: friend.toLowerCase() },
-        {
-          jobId: `crawl_${friend.toLowerCase()}`,
-          attempts: 3,
-          backoff: { type: "exponential", delay: 5000 },
-        },
+    try {
+      const friends = await jikan.getUserFriends(malUsername);
+      console.log(`  ${malUsername}: queuing ${friends.length} friends`);
+      for (const friend of friends) {
+        await crawlQueue.add(
+          "profile-crawl",
+          { username: friend.toLowerCase() },
+          {
+            jobId: `crawl_${friend.toLowerCase()}`,
+            attempts: 3,
+            backoff: { type: "exponential", delay: 5000 },
+          },
+        );
+      }
+    } catch {
+      console.warn(
+        `  ${malUsername}: could not fetch friends, skipping graph expansion`,
       );
     }
   },
@@ -116,8 +121,8 @@ const worker = new Worker(
     connection,
     concurrency: 1,
     limiter: { max: 2, duration: 1000 },
-    removeOnComplete: { count: 0 }, // don't keep completed jobs — prevents jobId dedup blocking re-runs
-    removeOnFail: { count: 100 }, // keep last 100 failed for debugging
+    removeOnComplete: { count: 0 },
+    removeOnFail: { count: 100 },
   },
 );
 

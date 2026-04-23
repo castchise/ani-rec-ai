@@ -12,14 +12,16 @@
                 "dist/**"
             ],
             "env": [
-                "DATABASE_URL"
+                "DATABASE_URL",
+                "MAL_CLIENT_ID"
             ]
         },
         "dev": {
             "cache": false,
             "persistent": true,
             "env": [
-                "DATABASE_URL"
+                "DATABASE_URL",
+                "MAL_CLIENT_ID"
             ]
         },
         "typecheck": {
@@ -37,15 +39,15 @@
         "db:migrate": {
             "cache": false
         },
+        "db:push": {
+            "cache": false
+        },
         "db:studio": {
             "cache": false,
             "persistent": true,
             "env": [
                 "DATABASE_URL"
             ]
-        },
-        "db:push": {
-            "cache": false
         }
     }
 }
