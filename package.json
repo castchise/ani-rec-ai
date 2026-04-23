@@ -3,17 +3,19 @@
   "private": true,
   "packageManager": "pnpm@9.0.0",
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "dotenv -- turbo run dev",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
-    "db:generate": "turbo run db:generate --filter=@ani-rec-ai/db",
-    "db:migrate": "turbo run db:migrate  --filter=@ani-rec-ai/db",
-    "db:studio": "turbo run db:studio   --filter=@ani-rec-ai/db"
+    "db:generate": "dotenv -- turbo run db:generate --filter=@ani-rec-ai/db",
+    "db:migrate": "dotenv -- turbo run db:migrate  --filter=@ani-rec-ai/db",
+    "db:studio": "dotenv -- turbo run db:studio   --filter=@ani-rec-ai/db",
+    "db:push": "dotenv -- turbo run db:push  --filter=@ani-rec-ai/db"
   },
   "devDependencies": {
-    "turbo": "^2.0.0",
-    "typescript": "^5.4.0"
+    "dotenv-cli": "^11.0.0",
+    "turbo": "^2.9.6",
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=20",
