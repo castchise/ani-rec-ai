@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { JikanClient } from "@ani-rec-ai/jikan-client";
+import { JikanClient } from "@ani-rec-ai/api-clients";
 import {
   db,
   users,

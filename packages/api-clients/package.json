@@ -1,5 +1,5 @@
 {
-    "name": "@ani-rec-ai/jikan-client",
+    "name": "@ani-rec-ai/api-clients",
     "version": "0.0.1",
     "private": true,
     "main": "./src/index.ts",

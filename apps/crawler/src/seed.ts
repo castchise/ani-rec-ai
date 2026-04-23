@@ -1,6 +1,6 @@
 import { crawlQueue } from "./queue";
 
-const seeds = ["Xinil", "seanboyy", "kineta", "castawayy"];
+const seeds = ["EverySportsAnime"];
 
 async function seed() {
   // Clean out any stale completed/failed jobs with these IDs from previous runs

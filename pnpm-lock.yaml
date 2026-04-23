@@ -20,12 +20,12 @@ importers:
 
   apps/api:
     dependencies:
+      '@ani-rec-ai/api-clients':
+        specifier: workspace:*
+        version: link:../../packages/api-clients
       '@ani-rec-ai/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@ani-rec-ai/jikan-client':
-        specifier: workspace:*
-        version: link:../../packages/jikan-client
       '@ani-rec-ai/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -51,12 +51,12 @@ importers:
 
   apps/crawler:
     dependencies:
+      '@ani-rec-ai/api-clients':
+        specifier: workspace:*
+        version: link:../../packages/api-clients
       '@ani-rec-ai/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@ani-rec-ai/jikan-client':
-        specifier: workspace:*
-        version: link:../../packages/jikan-client
       '@ani-rec-ai/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -123,6 +123,19 @@ importers:
         specifier: ^5
         version: 5.9.3
 
+  packages/api-clients:
+    dependencies:
+      '@ani-rec-ai/types':
+        specifier: workspace:*
+        version: link:../types
+    devDependencies:
+      '@ani-rec-ai/config':
+        specifier: workspace:*
+        version: link:../config
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+
   packages/config: {}
 
   packages/db:
@@ -148,19 +161,6 @@ importers:
         version: 1.0.0-beta.22(gel@2.2.0)(postgres@3.4.9)(zod@4.3.6)
       typescript:
         specifier: ^5.9.3
-        version: 5.9.3
-
-  packages/jikan-client:
-    dependencies:
-      '@ani-rec-ai/types':
-        specifier: workspace:*
-        version: link:../types
-    devDependencies:
-      '@ani-rec-ai/config':
-        specifier: workspace:*
-        version: link:../config
-      typescript:
-        specifier: ^5.4.0
         version: 5.9.3
 
   packages/types:

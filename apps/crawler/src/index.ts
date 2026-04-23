@@ -1,5 +1,5 @@
 import { Worker } from "bullmq";
-import { MalClient, JikanClient } from "@ani-rec-ai/jikan-client";
+import { MalClient, JikanClient } from "@ani-rec-ai/api-clients";
 import {
   db,
   crawledProfiles,
