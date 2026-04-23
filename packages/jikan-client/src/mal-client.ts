@@ -78,11 +78,13 @@ export class MalClient {
       `${MAL_BASE}/users/${username}/animelist?${params}`;
 
     while (nextUrl) {
-      const data = await this.fetch<MalAnimeListResponse>(nextUrl);
+      const data: MalAnimeListResponse =
+        await this.fetch<MalAnimeListResponse>(nextUrl);
 
       for (const item of data.data) {
         entries.push({
           animeId: item.node.id,
+          animeTitle: item.node.title,
           score: item.list_status.score || null, // 0 = unscored → null
           status: item.list_status.status as WatchStatus,
           updatedAt: item.list_status.updated_at,

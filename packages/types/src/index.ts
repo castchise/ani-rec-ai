@@ -1,16 +1,16 @@
 // packages/types/src/index.ts
 
 export interface Anime {
-  id: number; // MAL anime ID (Jikan uses the same IDs)
+  id: number; // MAL anime ID
   title: string;
   titleEnglish: string | null;
   synopsis: string | null;
   genres: string[];
   studios: string[];
   episodeCount: number | null;
-  averageScore: number | null; // MAL community score 0–10
-  popularity: number | null; // MAL popularity rank
-  startDate: string | null; // ISO date
+  averageScore: number | null;
+  popularity: number | null;
+  startDate: string | null;
   status: AnimeStatus;
   imageUrl: string | null;
 }
@@ -29,22 +29,23 @@ export type WatchStatus =
 
 export interface UserAnimeEntry {
   animeId: number;
+  animeTitle?: string | null; // populated by MalClient; used to upsert anime stubs
   score: number | null; // 0 = no score, 1–10 = rated
   status: WatchStatus;
   updatedAt: string;
 }
 
 export interface UserProfile {
-  id: string; // internal UUID
+  id: string;
   malUsername: string;
   listLastSynced: string | null;
 }
 
 export interface RecommendationResult {
   anime: Anime;
-  score: number; // predicted score 0–10
+  score: number;
   reason: "cf" | "embedding" | "hybrid";
-  confidence: number; // 0–1
+  confidence: number;
 }
 
 export interface RecommendationRequest {
@@ -56,7 +57,7 @@ export interface RecommendationRequest {
 export interface RecommendationFilters {
   excludePtw?: boolean;
   excludeWatched?: boolean;
-  genres?: string[]; // include only these genres
+  genres?: string[];
   excludeGenres?: string[];
   minScore?: number;
   maxEpisodes?: number;
