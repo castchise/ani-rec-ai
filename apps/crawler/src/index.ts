@@ -1,6 +1,13 @@
 import { Worker } from "bullmq";
 import { MalClient, JikanClient } from "@ani-rec-ai/jikan-client";
-import { db, crawledProfiles, users, userAnimeList, sql } from "@ani-rec-ai/db";
+import {
+  db,
+  crawledProfiles,
+  users,
+  userAnimeList,
+  anime,
+  sql,
+} from "@ani-rec-ai/db";
 import { connection, crawlQueue } from "./queue";
 
 const malClientId = process.env.MAL_CLIENT_ID;
@@ -49,6 +56,7 @@ const worker = new Worker(
     console.log(`  ${malUsername}: ${list.length} completed entries`);
 
     if (list.length > 0) {
+      // Upsert user row
       const [user] = await db
         .insert(users)
         .values({ malUsername })
@@ -59,9 +67,28 @@ const worker = new Worker(
         .returning({ id: users.id });
 
       const userId = user!.id;
+
+      // Only scored entries are useful for collaborative filtering
       const scored = list.filter((e) => (e.score ?? 0) > 0);
 
       if (scored.length > 0) {
+        // --- Step 1: upsert anime stubs to satisfy FK constraint ---
+        // user_anime_list.anime_id references anime.id (onDelete cascade).
+        // The anime table may be empty at crawl time; insert minimal stubs so
+        // the FK is satisfied. Real metadata is enriched separately (Phase 2).
+        const animeStubs = scored.map((e) => ({
+          id: e.animeId,
+          title: e.animeTitle ?? `Anime #${e.animeId}`, // title is notNull
+        }));
+
+        // Chunk into batches of 500 to stay under postgres parameter limits
+        const CHUNK = 500;
+        for (let i = 0; i < animeStubs.length; i += CHUNK) {
+          const chunk = animeStubs.slice(i, i + CHUNK);
+          await db.insert(anime).values(chunk).onConflictDoNothing(); // keep existing enriched data if already present
+        }
+
+        // --- Step 2: upsert list entries ---
         const rows = scored.map((e) => ({
           userId,
           animeId: e.animeId,
@@ -75,17 +102,20 @@ const worker = new Worker(
           updatedAt: new Date(e.updatedAt),
         }));
 
-        await db
-          .insert(userAnimeList)
-          .values(rows)
-          .onConflictDoUpdate({
-            target: [userAnimeList.userId, userAnimeList.animeId],
-            set: {
-              score: sql`excluded.score`,
-              status: sql`excluded.status`,
-              updatedAt: sql`excluded.updated_at`,
-            },
-          });
+        for (let i = 0; i < rows.length; i += CHUNK) {
+          const chunk = rows.slice(i, i + CHUNK);
+          await db
+            .insert(userAnimeList)
+            .values(chunk)
+            .onConflictDoUpdate({
+              target: [userAnimeList.userId, userAnimeList.animeId],
+              set: {
+                score: sql`excluded.score`,
+                status: sql`excluded.status`,
+                updatedAt: sql`excluded.updated_at`,
+              },
+            });
+        }
       }
 
       await db.insert(crawledProfiles).values({
@@ -97,6 +127,7 @@ const worker = new Worker(
       console.log(`  ${malUsername}: saved ${scored.length} scored entries`);
     }
 
+    // Expand graph via Jikan friends endpoint (not deprecated)
     try {
       const friends = await jikan.getUserFriends(malUsername);
       console.log(`  ${malUsername}: queuing ${friends.length} friends`);
