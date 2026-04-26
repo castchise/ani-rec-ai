@@ -7,7 +7,9 @@
         "build": "tsc",
         "start": "node dist/index.js",
         "typecheck": "tsc --noEmit",
-        "seed": "pnpm exec tsx --env-file=../../.env src/seed.ts"
+        "seed": "pnpm exec tsx --env-file=../../.env src/seed.ts",
+        "enrich": "pnpm exec tsx --env-file=../../.env src/enricher-worker.ts",
+        "seed:enrich": "pnpm exec tsx --env-file=../../.env src/seed-enricher.ts"
     },
     "dependencies": {
         "@ani-rec-ai/db": "workspace:*",
