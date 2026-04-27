@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { JikanClient } from "@ani-rec-ai/api-clients";
+import { MalClient } from "@ani-rec-ai/api-clients";
 import {
   db,
   users,
@@ -14,14 +14,17 @@ import {
 
 export const userRouter = new Hono();
 
-const jikan = new JikanClient();
+const malClientId = process.env.MAL_CLIENT_ID;
+if (!malClientId) throw new Error("MAL_CLIENT_ID is not set");
+
+const mal = new MalClient(malClientId);
 
 // ---------------------------------------------------------------------------
 // POST /users/sync
 // Body: { username: string }
 //
-// Fetches a MAL user's anime list from Jikan, upserts the user record and
-// their anime entries. Returns the canonical user row.
+// Fetches a MAL user's anime list directly from the MAL API, upserts the user
+// record and their anime entries. Returns summary info.
 // ---------------------------------------------------------------------------
 userRouter.post("/sync", async (c) => {
   let body: { username?: string };
@@ -40,9 +43,11 @@ userRouter.post("/sync", async (c) => {
   const malUsername = username.toLowerCase();
 
   // Upsert user row ---------------------------------------------------------
-  const existingUser = await db.query.users.findFirst({
-    where: (t, { eq }) => eq(t.malUsername, malUsername),
-  });
+  const [existingUser] = await db
+    .select()
+    .from(users)
+    .where(eq(users.malUsername, malUsername))
+    .limit(1);
 
   let userId: string;
   if (existingUser) {
@@ -55,32 +60,48 @@ userRouter.post("/sync", async (c) => {
     userId = inserted!.id;
   }
 
-  // Fetch list from Jikan ---------------------------------------------------
-  let entries: Awaited<ReturnType<typeof jikan.getUserAnimeList>>;
+  // Fetch full list from MAL API --------------------------------------------
+  // No status filter = all statuses in one paginated sweep.
+  let entries: Awaited<ReturnType<typeof mal.getUserAnimeList>>;
   try {
-    entries = await jikan.getUserAnimeList(malUsername);
+    entries = await mal.getUserAnimeList(malUsername);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    if (message.includes("404")) {
+    if (message.startsWith("404")) {
       return c.json({ error: `MAL user '${malUsername}' not found` }, 404);
     }
-    if (message.includes("403")) {
+    if (message.startsWith("403")) {
       return c.json({ error: `MAL list for '${malUsername}' is private` }, 403);
     }
     return c.json(
-      { error: "Failed to fetch from Jikan", detail: message },
+      { error: "Failed to fetch from MAL API", detail: message },
       502,
     );
   }
 
-  // Keep only entries that have a score or are completed/watching -----------
+  // Keep entries that are meaningful for recommendations --------------------
   const relevant = entries.filter(
     (e) =>
       e.status === "completed" || e.status === "watching" || (e.score ?? 0) > 0,
   );
 
-  // Bulk upsert userAnimeList rows ------------------------------------------
   if (relevant.length > 0) {
+    // Upsert minimal anime stubs to satisfy the FK on user_anime_list.
+    // Real metadata is filled in later by the enricher worker.
+    const animeStubs = relevant.map((e) => ({
+      id: e.animeId,
+      title: e.animeTitle ?? `Anime #${e.animeId}`,
+    }));
+
+    const CHUNK = 500;
+    for (let i = 0; i < animeStubs.length; i += CHUNK) {
+      await db
+        .insert(anime)
+        .values(animeStubs.slice(i, i + CHUNK))
+        .onConflictDoNothing(); // preserve already-enriched rows
+    }
+
+    // Upsert list entries ---------------------------------------------------
     const rows = relevant.map((e) => ({
       userId,
       animeId: e.animeId,
@@ -94,20 +115,22 @@ userRouter.post("/sync", async (c) => {
       updatedAt: new Date(e.updatedAt),
     }));
 
-    await db
-      .insert(userAnimeList)
-      .values(rows)
-      .onConflictDoUpdate({
-        target: [userAnimeList.userId, userAnimeList.animeId],
-        set: {
-          score: sql`excluded.score`,
-          status: sql`excluded.status`,
-          updatedAt: sql`excluded.updated_at`,
-        },
-      });
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      await db
+        .insert(userAnimeList)
+        .values(rows.slice(i, i + CHUNK))
+        .onConflictDoUpdate({
+          target: [userAnimeList.userId, userAnimeList.animeId],
+          set: {
+            score: sql`excluded.score`,
+            status: sql`excluded.status`,
+            updatedAt: sql`excluded.updated_at`,
+          },
+        });
+    }
   }
 
-  // Mark as crawled ---------------------------------------------------------
+  // Mark profile as crawled -------------------------------------------------
   await db
     .insert(crawledProfiles)
     .values({ malUsername, ratingCount: relevant.length })
@@ -166,9 +189,11 @@ userRouter.get("/:username/anime", async (c) => {
   }
 
   // Resolve user ------------------------------------------------------------
-  const user = await db.query.users.findFirst({
-    where: (t, { eq }) => eq(t.malUsername, malUsername),
-  });
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.malUsername, malUsername))
+    .limit(1);
 
   if (!user) {
     return c.json(
@@ -179,7 +204,7 @@ userRouter.get("/:username/anime", async (c) => {
     );
   }
 
-  // Fetch list entries ------------------------------------------------------
+  // Fetch list entries from DB ----------------------------------------------
   const listRows = await db
     .select()
     .from(userAnimeList)
@@ -192,7 +217,6 @@ userRouter.get("/:username/anime", async (c) => {
     .limit(limit)
     .offset(offset);
 
-  // Apply scored-only filter (avoids a nullable SQL comparison) -------------
   const filtered = scoredOnly
     ? listRows.filter((r) => (r.score ?? 0) > 0)
     : listRows;
@@ -220,7 +244,7 @@ userRouter.get("/:username/anime", async (c) => {
     score: row.score,
     status: row.status,
     updatedAt: row.updatedAt,
-    // null = not yet enriched from Jikan (Phase 2)
+    // null = not yet enriched by the enricher worker
     anime: animeMap.get(row.animeId) ?? null,
   }));
 
