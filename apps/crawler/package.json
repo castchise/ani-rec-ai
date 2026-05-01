@@ -9,7 +9,9 @@
         "typecheck": "tsc --noEmit",
         "seed": "pnpm exec tsx --env-file=../../.env src/seed.ts",
         "enrich": "pnpm exec tsx --env-file=../../.env src/enricher-worker.ts",
-        "seed:enrich": "pnpm exec tsx --env-file=../../.env src/seed-enricher.ts"
+        "seed:enrich": "pnpm exec tsx --env-file=../../.env src/seed-enricher.ts",
+        "embed": "pnpm exec tsx --env-file=../../.env src/embed-worker.ts",
+        "seed:embed": "pnpm exec tsx --env-file=../../.env src/seed-embed.ts"
     },
     "dependencies": {
         "@ani-rec-ai/db": "workspace:*",
