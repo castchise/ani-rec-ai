@@ -103,7 +103,7 @@ export async function getCFScores(
     LIMIT ${MAX_CANDIDATE_USERS}
   `);
 
-  const candidateUserIds = candidateResult.rows.map((r) => r.userId);
+  const candidateUserIds = candidateResult.map((r) => r.userId);
   if (candidateUserIds.length === 0) return new Map();
 
   // -------------------------------------------------------------------------

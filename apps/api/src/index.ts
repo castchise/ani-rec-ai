@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { userRouter } from "./routes/user";
+import { recommendRouter } from "./routes/recommend";
 
 const app = new Hono();
 
@@ -14,6 +15,8 @@ app.get("/health", (c) =>
 );
 
 app.route("/users", userRouter);
+
+app.route("/recommendations", recommendRouter);
 
 const port = Number(process.env.PORT ?? 3001);
 console.log(`API running on http://localhost:${port}`);

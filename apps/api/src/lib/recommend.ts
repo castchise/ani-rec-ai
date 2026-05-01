@@ -244,7 +244,7 @@ export async function getRecommendations(
       LIMIT ${ANN_CANDIDATES}
     `);
 
-    candidateRows = result.rows.map((r) => ({
+    candidateRows = result.map((r) => ({
       id: r.id,
       title: r.title,
       titleEnglish: r.title_english,
