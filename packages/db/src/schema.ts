@@ -10,8 +10,13 @@ import {
   pgEnum,
   uuid,
   boolean,
-  // vector,
+  vector,
+  customType,
 } from "drizzle-orm/pg-core";
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
 
 export const watchStatusEnum = pgEnum("watch_status", [
   "completed",
@@ -21,6 +26,19 @@ export const watchStatusEnum = pgEnum("watch_status", [
   "plan_to_watch",
 ]);
 
+// ---------------------------------------------------------------------------
+// Tables
+// ---------------------------------------------------------------------------
+
+/**
+ * Core anime catalogue.
+ *
+ * embedding   — 768-dim Nomic Embed Text v1 vector of (title + synopsis).
+ *               Used for content-based similarity search via pgvector.
+ * cfVector    — 64-dim latent factor vector produced by matrix factorisation.
+ *               Used for collaborative-filtering–based ranking.
+ *               Populated by the CF training job (Phase 2+).
+ */
 export const anime = pgTable(
   "anime",
   {
@@ -36,13 +54,16 @@ export const anime = pgTable(
     startDate: text("start_date"),
     status: text("status"),
     imageUrl: text("image_url"),
-    // Embedding vectors — populated in Phase 2
-    // embedding: vector("embedding", { dimensions: 1536 }),
-    // cfVector: vector("cf_vector", { dimensions: 100 }),
+    // Embedding vectors — populated by the embed-worker
+    embedding: vector("embedding", { dimensions: 768 }),
+    cfVector: vector("cf_vector", { dimensions: 64 }),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
   (t) => ({
     popularityIdx: index("anime_popularity_idx").on(t.popularity),
+    // HNSW index for fast approximate nearest-neighbour search.
+    // Created manually via migration (see drizzle/migrations/0001_pgvector.sql).
+    // Drizzle doesn't yet generate HNSW index DDL automatically.
   }),
 );
 
